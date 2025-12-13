@@ -87,13 +87,11 @@ class TickerCard(ttk.Frame):
     def update_display(self, price, change, percent):
         if not self.active:
             return
+
         sign = "+" if change >= 0 else ""
         self.price_var.set(f"{price:,.2f}")
         self.change_var.set(f"{sign}{change:,.2f} ({sign}{percent:.2f}%)")
 
-        if change >= 0:
-            self.price_lbl.config(fg="green")
-            self.change_lbl.config(fg="green")
-        else:
-            self.price_lbl.config(fg="red")
-            self.change_lbl.config(fg="red")
+        color = "#1aa31a" if change >= 0 else "#d11a1a"
+        self.price_lbl.config(fg=color)
+        self.change_lbl.config(fg=color)
