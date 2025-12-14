@@ -5,9 +5,15 @@ from config import SymbolConfig
 from components.ticker_card import TickerCard
 from components.candle_chart import CandleChart
 
+from components.order_book import OrderBook
+from components.recent_trades import RecentTrades
+
+import json
+
 BTN_BG = "#eaeaea"
 BTN_HOVER = "#d6d6d6"
 BTN_ACTIVE = "#bfbfbf"
+PREF_FILE = "dashboard_prefs.json"
 
 class CryptoDashboard(tk.Tk):
     def __init__(self):
@@ -19,12 +25,27 @@ class CryptoDashboard(tk.Tk):
             SymbolConfig("BTCUSDT", "BTC/USDT", "₿"),
             SymbolConfig("ETHUSDT", "ETH/USDT", "Ξ"),
             SymbolConfig("SOLUSDT", "SOL/USDT", "◎"),
+            SymbolConfig("BNBUSDT", "BNB/USDT", "🟡"),
+            SymbolConfig("XRPUSDT", "XRP/USDT", "✕"),
         ]
         
         self.cards = {}
         self.visible = {}
         self.active_symbol = "BTCUSDT"
         self.chart_visible = True
+        
+        try:
+            with open(PREF_FILE, "r") as f:
+                prefs = json.load(f)
+            self.active_symbol = prefs.get("active_symbol", self.active_symbol)
+            self.chart_visible = prefs.get("chart_visible", self.chart_visible)
+
+            saved_visible = prefs.get("visible", {})
+            for cfg in self.symbols:
+                self.visible[cfg.symbol] = bool(saved_visible.get(cfg.symbol, True))
+        except Exception:
+            for cfg in self.symbols:
+                self.visible[cfg.symbol] = True
         
         self.control_frame = ttk.Frame(self, padding=10)
         self.control_frame.pack(fill="x")
@@ -35,11 +56,18 @@ class CryptoDashboard(tk.Tk):
         self.chart_frame = ttk.Frame(self, padding=10)
         self.chart_frame.pack(fill="both", expand=True)
         
+        self.bottom_frame = ttk.Frame(self)
+        self.bottom_frame.pack(fill="both", expand=True)
+
+        self.order_book = OrderBook(self.bottom_frame, self.active_symbol)
+        self.order_book.pack(side="left", fill="both", expand=True)
+
+        self.trades = RecentTrades(self.bottom_frame, self.active_symbol)
+        self.trades.pack(side="left", fill="both", expand=True)
+        
         self.toggle_btns = {}
 
         for cfg in self.symbols:
-            self.visible[cfg.symbol] = True
-
             btn_frame = tk.Frame(
                 self.control_frame,
                 bg=BTN_BG,
@@ -80,9 +108,17 @@ class CryptoDashboard(tk.Tk):
         
         for cfg in self.symbols:
             card = TickerCard(self.ticker_frame, cfg, self.select_symbol)
-            card.pack(side="left", padx=10, fill="x", expand=True)
 
-            card.start(self, self.set_status)
+            if self.visible.get(cfg.symbol, True):
+                card.pack(side="left", padx=10, fill="x", expand=True)
+                card.start(self, self.set_status)
+            else:
+                card.pack_forget()
+
+                frame, label = self.toggle_btns[cfg.symbol]
+                coin = cfg.symbol.replace("USDT", "")
+                label.config(text=f"{cfg.logo_text}  Show {coin}")
+
             self.cards[cfg.symbol] = card
         
         self.chart = CandleChart(self.chart_frame)
@@ -99,6 +135,9 @@ class CryptoDashboard(tk.Tk):
     def select_symbol(self, symbol: str):
         self.active_symbol = symbol
         self.set_status(f"Selected: {symbol}")
+        
+        self.order_book.set_symbol(symbol)
+        self.trades.set_symbol(symbol)
 
         for sym, card in self.cards.items():
             card.set_selected(sym == symbol)
@@ -118,14 +157,14 @@ class CryptoDashboard(tk.Tk):
             card.pack_forget()
             self.visible[symbol] = False
 
-            label.config(text=f"{icon}  {coin}")
+            label.config(text=f"{icon}  Show {coin}")
             self.set_status(f"{symbol} hidden")
         else:
             card.pack(side="left", padx=10, fill="x", expand=True)
             card.start(self, self.set_status)
             self.visible[symbol] = True
 
-            label.config(text=f"{icon}  {coin}")
+            label.config(text=f"{icon}  Hide {coin}")
             self.set_status(f"{symbol} shown")
             
     def toggle_chart(self):
@@ -147,9 +186,21 @@ class CryptoDashboard(tk.Tk):
         for card in self.cards.values():
             card.stop()
         try:
+            prefs = {
+                "active_symbol": self.active_symbol,
+                "chart_visible": self.chart_visible,
+                "visible": self.visible
+            }
+            with open(PREF_FILE, "w") as f:
+                json.dump(prefs, f, indent=2)
+        except Exception:
+            pass
+        
+        try:
             self.chart.stop(self)
         except Exception:
             pass
+        
         self.destroy()
         
     def _hover_on(self, frame, label):

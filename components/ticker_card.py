@@ -18,6 +18,7 @@ class TickerCard(ttk.Frame):
         
         self.price_var = tk.StringVar(value="--")
         self.change_var = tk.StringVar(value="--")
+        self.volume_var = tk.StringVar(value="Vol: --")
         
         self.card = tk.Frame(
             self,
@@ -30,14 +31,30 @@ class TickerCard(ttk.Frame):
         )
         self.card.pack(fill="both", expand=True, padx=6, pady=6)
         
-        self.title_lbl = tk.Label(self.card, text=cfg.title, bg=CARD_BG, font=("Arial", 11, "bold"))
+        self.title_lbl = tk.Label(self.card, 
+            text=cfg.title,
+            bg=CARD_BG,
+            font=("Arial", 11, "bold"))
         self.title_lbl.pack(pady=(10, 2))
 
-        self.price_lbl = tk.Label(self.card, textvariable=self.price_var, bg=CARD_BG, font=("Arial", 16, "bold"))
+        self.price_lbl = tk.Label(self.card,
+            textvariable=self.price_var,
+            bg=CARD_BG,
+            font=("Arial", 16, "bold"))
         self.price_lbl.pack(pady=(0, 2))
 
-        self.change_lbl = tk.Label(self.card, textvariable=self.change_var, bg=CARD_BG, font=("Arial", 10))
+        self.change_lbl = tk.Label(self.card,
+            textvariable=self.change_var,
+            bg=CARD_BG, font=("Arial", 10))
         self.change_lbl.pack(pady=(0, 10))
+        
+        self.volume_lbl = tk.Label(
+            self.card,
+            textvariable=self.volume_var,
+            bg=CARD_BG,
+            font=("Arial", 9)
+        )
+        self.volume_lbl.pack(pady=(0, 8))
         
         widgets = (self.card, self.title_lbl, self.price_lbl, self.change_lbl)
         for w in widgets:
@@ -70,7 +87,7 @@ class TickerCard(ttk.Frame):
         self.active = True
         
         def on_tick(price, change, percent, volume):
-            root.after(0, self.update_display, price, change, percent)
+            root.after(0, self.update_display, price, change, percent, volume)
             
         self.stream = TickerStream(self.cfg.symbol, on_tick, status_cb)
         self.stream.start()
@@ -84,14 +101,16 @@ class TickerCard(ttk.Frame):
             self.stream.stop()
             self.stream = None
             
-    def update_display(self, price, change, percent):
+    def update_display(self, price, change, percent, volume):
         if not self.active:
             return
 
         sign = "+" if change >= 0 else ""
         self.price_var.set(f"{price:,.2f}")
         self.change_var.set(f"{sign}{change:,.2f} ({sign}{percent:.2f}%)")
+        self.volume_var.set(f"Vol (24h): {volume:,.2f}")
 
-        color = "#1aa31a" if change >= 0 else "#d11a1a"
+        color = "green" if change >= 0 else "red"
         self.price_lbl.config(fg=color)
         self.change_lbl.config(fg=color)
+

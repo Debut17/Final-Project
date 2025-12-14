@@ -1,0 +1,11 @@
+{
+  "active_symbol": "ETHUSDT",
+  "chart_visible": true,
+  "visible": {
+    "BTCUSDT": true,
+    "ETHUSDT": true,
+    "SOLUSDT": true,
+    "BNBUSDT": true,
+    "XRPUSDT": true
+  }
+}
